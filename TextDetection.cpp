@@ -44,7 +44,7 @@ g++ -o DetectText TextDetection.cpp FeaturesMain.cpp -lopencv_core -lopencv_high
 #include <utility>
 #include <algorithm>
 #include <vector>
-#include <TextDetection.h>
+#include "TextDetection.h"
 
 #define PI 3.14159265
 
