@@ -74,7 +74,24 @@ IplImage * loadFloatImage ( const char * name )
 
 int mainTextDetection ( int argc, char * * argv )
 {
-  IplImage * byteQueryImage = loadByteImage ( argv[1] );
+
+  DetectionParams params = detection_default_params;
+
+  char* input_filename = argv[1];
+  char* output_filename = argv[2];
+  if (atoi(argv[3]) > -1)
+    params.dark_on_light = atoi(argv[3]);
+  if (atoi(argv[4]) > -1)
+    params.canny_size = atoi(argv[4]);
+  if (atof(argv[5]) > -1)
+    params.canny_low = atof(argv[5]);
+  if (atof(argv[6]) > -1)
+    params.canny_high = atof(argv[6]);
+  if (atoi(argv[7]) > -1)
+    params.save_intermediate = atoi(argv[7]);
+
+
+  IplImage * byteQueryImage = loadByteImage ( input_filename );
   if ( !byteQueryImage )
   {
     printf ( "couldn't load query image\n" );
@@ -82,18 +99,20 @@ int mainTextDetection ( int argc, char * * argv )
   }
 
   // Detect text in the image
-  IplImage * output = textDetection ( byteQueryImage, atoi(argv[3]) );
+  IplImage * output = textDetection ( byteQueryImage, params );
   cvReleaseImage ( &byteQueryImage );
-  cvSaveImage ( argv[2], output );
+
+  // save output
+  cvSaveImage ( output_filename, output );
   cvReleaseImage ( &output );
   return 0;
 }
 
 int main ( int argc, char * * argv )
 {
-  if ( ( argc != 4 ) )
+  if ( ( argc != 8 ) )
   {
-    printf ( "usage: %s imagefile resultImage darkText\n",
+    printf ( "usage: %s imagefile resultImage dark_on_light canny_size canny_low canny_high save_intermediate\n",
              argv[0] );
 
     return -1;

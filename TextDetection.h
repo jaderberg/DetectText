@@ -54,11 +54,21 @@ struct Chain {
     std::vector<int> components;
 };
 
+typedef struct {
+    bool dark_on_light;
+    int canny_size;
+    double canny_low;
+    double canny_high;
+    bool save_intermediate;
+} DetectionParams;
+
+extern const DetectionParams detection_default_params;
+
 bool Point2dSort (Point2d const & lhs,
                   Point2d const & rhs);
 
 IplImage * textDetection (IplImage *    float_input,
-                          bool dark_on_light);
+                          DetectionParams params);
 
 void strokeWidthTransform (IplImage * edgeImage,
                            IplImage * gradientX,

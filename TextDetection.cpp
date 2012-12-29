@@ -48,6 +48,14 @@ g++ -o DetectText TextDetection.cpp FeaturesMain.cpp -lopencv_core -lopencv_high
 
 #define PI 3.14159265
 
+const DetectionParams detection_default_params = {
+    true,
+    3,
+    175,
+    320,
+    false
+};
+
 std::vector<std::pair<CvPoint,CvPoint> > findBoundingBoxes( std::vector<std::vector<Point2d> > & components,
                                                            std::vector<Chain> & chains,
                                                            std::vector<std::pair<Point2d,Point2d> > & compBB,
@@ -285,22 +293,25 @@ void renderChains (IplImage * SWTImage,
 	cvReleaseImage(&outTemp);
 }
 
-IplImage * textDetection (IplImage * input, bool dark_on_light)
+IplImage * textDetection (IplImage * input, DetectionParams params)
 {
     assert ( input->depth == IPL_DEPTH_8U );
     assert ( input->nChannels == 3 );
+    bool dark_on_light = params.dark_on_light;
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
     // Convert to grayscale
     IplImage * grayImage =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     cvCvtColor ( input, grayImage, CV_RGB2GRAY );
     // Create Canny Image
-    double threshold_low = 175;
-    double threshold_high = 320;
+    double threshold_low = params.canny_low;
+    double threshold_high = params.canny_low;
     IplImage * edgeImage =
             cvCreateImage( cvGetSize (input),IPL_DEPTH_8U, 1 );
-    cvCanny(grayImage, edgeImage, threshold_low, threshold_high, 3) ;
-    cvSaveImage ( "canny.png", edgeImage);
+    cvCanny(grayImage, edgeImage, threshold_low, threshold_high, params.canny_size) ;
+    
+    if (params.save_intermediate)
+        cvSaveImage ( "canny.png", edgeImage);
 
     // Create gradient X, gradient Y
     IplImage * gaussianImage =
@@ -331,15 +342,17 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     strokeWidthTransform ( edgeImage, gradientX, gradientY, dark_on_light, SWTImage, rays );
     SWTMedianFilter ( SWTImage, rays );
 
-    IplImage * output2 =
-            cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_32F, 1 );
-    normalizeImage (SWTImage, output2);
-    IplImage * saveSWT =
-            cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
-    cvConvertScale(output2, saveSWT, 255, 0);
-    cvSaveImage ( "SWT.png", saveSWT);
-    cvReleaseImage ( &output2 );
-    cvReleaseImage( &saveSWT );
+    if (params.save_intermediate) {
+        IplImage * output2 =
+                cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_32F, 1 );
+        normalizeImage (SWTImage, output2);
+        IplImage * saveSWT =
+                cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
+        cvConvertScale(output2, saveSWT, 255, 0);
+        cvSaveImage ( "SWT.png", saveSWT);
+        cvReleaseImage ( &output2 );
+        cvReleaseImage( &saveSWT );
+    }
 
     // Calculate legally connect components from SWT and gradient image.
     // return type is a vector of vectors, where each outer vector is a component and
@@ -354,11 +367,13 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     std::vector<Point2d> compDimensions;
     filterComponents(SWTImage, components, validComponents, compCenters, compMedians, compDimensions, compBB );
 
-    IplImage * output3 =
-            cvCreateImage ( cvGetSize ( input ), 8U, 3 );
-    renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
-    cvSaveImage ( "components.png",output3);
-    //cvReleaseImage ( &output3 );
+    if (params.save_intermediate) {
+        IplImage * output3 =
+                cvCreateImage ( cvGetSize ( input ), 8U, 3 );
+        renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
+        cvSaveImage ( "components.png",output3);
+        cvReleaseImage ( &output3 );
+    }
 
     // Make chains of components
     std::vector<Chain> chains;
@@ -367,7 +382,8 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     IplImage * output4 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     renderChains ( SWTImage, validComponents, chains, output4 );
-    //cvSaveImage ( "text.png", output4);
+    if (params.save_intermediate)
+        cvSaveImage ( "text.png", output4);
 
     IplImage * output5 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
